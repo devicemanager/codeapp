@@ -75,6 +75,53 @@ class AlertManager: ObservableObject {
     }
 }
 
+class AuthenticationRequestManager: ObservableObject {
+    @Published var isShowingAlert = false
+    @Published var username = ""
+    @Published var password = ""
+
+    var title: LocalizedStringKey = ""
+    var usernameTitleKey: LocalizedStringKey? = nil
+    var passwordTitleKey: LocalizedStringKey? = nil
+    var callback: (() -> Void) = {}
+    var callbackOnCancel: (() -> Void) = {}
+
+    @MainActor
+    func requestPasswordAuthentication(
+        title: LocalizedStringKey,
+        usernameTitleKey: LocalizedStringKey? = nil,
+        passwordTitleKey: LocalizedStringKey? = nil
+    ) async throws -> (String, String) {
+        self.title = title
+        self.usernameTitleKey = usernameTitleKey
+        self.passwordTitleKey = passwordTitleKey
+        self.isShowingAlert = true
+
+        return try await withCheckedThrowingContinuation { continuation in
+            callback = {
+                continuation.resume(returning: (self.username, self.password))
+                self.username = ""
+                self.password = ""
+                self.title = ""
+                self.usernameTitleKey = nil
+                self.passwordTitleKey = nil
+                self.callback = {}
+                self.callbackOnCancel = {}
+            }
+            callbackOnCancel = {
+                continuation.resume(throwing: AppError.operationCancelledByUser)
+                self.username = ""
+                self.password = ""
+                self.title = ""
+                self.usernameTitleKey = nil
+                self.passwordTitleKey = nil
+                self.callback = {}
+                self.callbackOnCancel = {}
+            }
+        }
+    }
+}
+
 class MainStateManager: ObservableObject {
     @Published var showsNewFileSheet = false
     @Published var showsDirectoryPicker = false
@@ -95,6 +142,7 @@ class MainApp: ObservableObject {
     let safariManager = SafariManager()
     let directoryPickerManager = DirectoryPickerManager()
     let createFileSheetManager = CreateFileSheetManager()
+    let authenticationRequestManager = AuthenticationRequestManager()
 
     @Published var editors: [EditorInstance] = []
     var textEditors: [TextEditorInstance] {
@@ -143,7 +191,7 @@ class MainApp: ObservableObject {
     var editorShortcuts: [MonacoEditorAction] = []
     var monacoStateToRestore: String? = nil
 
-    let terminalInstance: TerminalInstance
+    var terminalInstance: TerminalInstance! = nil
     var monacoInstance: EditorImplementation! = nil
     var editorTypesMonitor: FolderMonitor? = nil
     let deviceSupportsBiometricAuth: Bool = biometricAuthSupported()
@@ -156,12 +204,11 @@ class MainApp: ObservableObject {
     private var workSpaceCancellable: AnyCancellable? = nil
 
     @AppStorage("alwaysOpenInNewTab") var alwaysOpenInNewTab: Bool = false
-    @AppStorage("compilerShowPath") var compilerShowPath = false
-    @AppStorage("editorSpellCheckEnabled") var editorSpellCheckEnabled = false
-    @AppStorage("editorSpellCheckOnContentChanged") var editorSpellCheckOnContentChanged = true
     @AppStorage("explorer.confirmBeforeDelete") var confirmBeforeDelete = false
     @AppStorage("editorOptions") var editorOptions: CodableWrapper<EditorOptions> = .init(
         value: EditorOptions())
+    @AppStorage("terminalOptions") var terminalOptions: CodableWrapper<TerminalOptions> = .init(
+        value: TerminalOptions())
     @AppStorage("editorLightTheme") var selectedLightTheme: String = "Light+"
     @AppStorage("editorDarkTheme") var selectedTheme: String = "Dark+"
     @AppStorage("stateRestorationEnabled") var stateRestorationEnabled = true
@@ -173,7 +220,7 @@ class MainApp: ObservableObject {
 
         self.workSpaceStorage = WorkSpaceStorage(url: rootDir)
 
-        terminalInstance = TerminalInstance(root: rootDir)
+        terminalInstance = TerminalInstance(root: rootDir, options: terminalOptions.value)
         setUpEditorInstance()
 
         terminalInstance.openEditor = { [weak self] url in

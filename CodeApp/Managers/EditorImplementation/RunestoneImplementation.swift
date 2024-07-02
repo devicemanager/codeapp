@@ -48,8 +48,8 @@ import TreeSitterYAMLRunestone
 
 class DynamicTheme: Runestone.Theme {
 
-    private var lightTheme: Runestone.Theme
-    private var darkTheme: Runestone.Theme
+    var lightTheme: Runestone.Theme
+    var darkTheme: Runestone.Theme
     var editorFont: UIFont
 
     init(light: Runestone.Theme, dark: Runestone.Theme, font: UIFont) {
@@ -293,17 +293,20 @@ struct URLTextState {
     var url: String
     var version: Int
     var state: TextViewState
+    var contentOffset: CGPoint
+    var selectedTextRange: UITextRange?
 
     init(url: String, state: TextViewState) {
         self.url = url
         self.version = 0
         self.state = state
+        self.contentOffset = .zero
+        self.selectedTextRange = nil
     }
 }
 
 class RunestoneImplementation: NSObject {
     private var textView: TextView
-    private let workerQueue = DispatchQueue.global(qos: .userInitiated)
 
     var options: EditorOptions {
         didSet {
@@ -312,12 +315,7 @@ class RunestoneImplementation: NSObject {
     }
     var theme: EditorTheme {
         didSet {
-            self.runeStoneTheme = DynamicTheme(
-                light: theme.light != nil ? RunestoneTheme(vsTheme: theme.light!) : DefaultTheme(),
-                dark: theme.dark != nil ? RunestoneTheme(vsTheme: theme.dark!) : DefaultTheme(),
-                font: UIFont(name: options.fontFamily, size: CGFloat(options.fontSize))
-                    ?? DefaultTheme().font
-            )
+            updateEditorTheme()
         }
     }
     private var runeStoneTheme: DynamicTheme
@@ -334,6 +332,8 @@ class RunestoneImplementation: NSObject {
         states[state.url] = state
         currentURL = state.url
         self.textView.setState(state.state)
+        self.textView.contentOffset = state.contentOffset
+        self.textView.selectedTextRange = state.selectedTextRange
     }
 
     init(options: EditorOptions, theme: EditorTheme) {
@@ -352,12 +352,24 @@ class RunestoneImplementation: NSObject {
         textView.autocorrectionType = .no
         textView.spellCheckingType = .no
         textView.backgroundColor = runeStoneTheme.backgroundColor
+        textView.smartDashesType = .no
+        textView.smartQuotesType = .no
+        textView.smartInsertDeleteType = .no
         self.textView = textView
 
         super.init()
 
         textView.editorDelegate = self
+        textView.delegate = self
         configureTextViewForOptions(options: options)
+    }
+
+    private func updateEditorTheme() {
+        runeStoneTheme.lightTheme =
+            theme.light != nil ? RunestoneTheme(vsTheme: theme.light!) : DefaultTheme()
+        runeStoneTheme.darkTheme =
+            theme.dark != nil ? RunestoneTheme(vsTheme: theme.dark!) : DefaultTheme()
+        textView.redisplayVisibleLines()
     }
 
     func configureTextViewForOptions(options: EditorOptions) {
@@ -476,7 +488,20 @@ extension RunestoneImplementation: EditorImplementation {
     }
 
     func createNewModel(url: String, value: String) async {
-        workerQueue.async {
+        if await Task(operation: { @MainActor in
+            if let currentState = states[url] {
+                self.setState(state: currentState)
+                if value != self.textView.text {
+                    self.textView.text = value
+                }
+                return true
+            } else {
+                return false
+            }
+        }).value {
+            return
+        }
+        await Task.detached(priority: .userInitiated) {
             if let language = self.detectLangauge(url: url) {
                 let state = URLTextState(
                     url: url,
@@ -485,9 +510,7 @@ extension RunestoneImplementation: EditorImplementation {
                         theme: self.runeStoneTheme,
                         language: language
                     ))
-                DispatchQueue.main.async {
-                    self.setState(state: state)
-                }
+                await self.setState(state: state)
             } else {
                 let state = URLTextState(
                     url: url,
@@ -495,11 +518,9 @@ extension RunestoneImplementation: EditorImplementation {
                         text: value,
                         theme: self.runeStoneTheme
                     ))
-                DispatchQueue.main.async {
-                    self.setState(state: state)
-                }
+                await self.setState(state: state)
             }
-        }
+        }.value
     }
 
     func renameModel(oldURL: String, updatedURL: String) async {
@@ -530,12 +551,13 @@ extension RunestoneImplementation: EditorImplementation {
     }
 
     func setVSTheme(theme: Theme) async {
-        if theme.isDark {
-            self.theme.dark = theme
-        } else {
-            self.theme.light = theme
-        }
         await MainActor.run {
+            if theme.isDark {
+                self.theme.dark = theme
+            } else {
+                self.theme.light = theme
+            }
+            updateEditorTheme()
             self.textView.backgroundColor = self.runeStoneTheme.backgroundColor
         }
     }
@@ -553,7 +575,7 @@ extension RunestoneImplementation: EditorImplementation {
     }
 
     func scrollToLine(line: Int) async {
-
+        await textView.goToLine(line)
     }
 
     func openSearchWidget() async {
@@ -676,5 +698,24 @@ extension RunestoneImplementation: TextViewDelegate {
                 cursorPositionDidChange: textLocation.lineNumber + 1,
                 column: textLocation.column + 1)
         }
+        guard let currentURL, var modifiedState = states[currentURL] else { return }
+        modifiedState.selectedTextRange = textView.selectedTextRange
+        states[currentURL] = modifiedState
+    }
+}
+
+extension RunestoneImplementation: UIScrollViewDelegate {
+    func didEndScrolling() {
+        guard let currentURL, var modifiedState = states[currentURL] else { return }
+        modifiedState.contentOffset = textView.contentOffset
+        states[currentURL] = modifiedState
+    }
+
+    func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
+        didEndScrolling()
+    }
+
+    func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
+        if !decelerate { didEndScrolling() }
     }
 }

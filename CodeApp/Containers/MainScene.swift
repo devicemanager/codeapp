@@ -93,6 +93,7 @@ struct MainScene: View {
             .environmentObject(App.safariManager)
             .environmentObject(App.directoryPickerManager)
             .environmentObject(App.createFileSheetManager)
+            .environmentObject(App.authenticationRequestManager)
             .onAppear {
                 restoreSceneState()
                 App.extensionManager.initializeExtensions(app: App)
@@ -113,12 +114,7 @@ struct MainScene: View {
                     object: nil
                 ),
                 perform: { notification in
-                    // TODO: What does this code do?
                     guard var theme = themeManager.currentTheme else {
-                        //                        if let isDark = notification.userInfo?["isDark"] as? Bool {
-                        //                            App.monacoInstance.executeJavascript(command: "resetTheme(\(isDark))")
-                        //                            App.terminalInstance.executeScript("applyTheme(null, \(isDark))")
-                        //                        }
                         return
                     }
                     Task { await App.monacoInstance.setVSTheme(theme: theme) }
@@ -139,12 +135,15 @@ private struct MainView: View {
     @EnvironmentObject var directoryPickerManager: DirectoryPickerManager
     @EnvironmentObject var createFileSheetManager: CreateFileSheetManager
     @EnvironmentObject var themeManager: ThemeManager
+    @EnvironmentObject var authenticationRequestManager: AuthenticationRequestManager
 
     @Environment(\.horizontalSizeClass) var horizontalSizeClass
     @Environment(\.colorScheme) var colorScheme: ColorScheme
 
     @AppStorage("changelog.lastread") var changeLogLastReadVersion = "0.0"
     @AppStorage("runeStoneEditorEnabled") var runeStoneEditorEnabled: Bool = false
+    @AppStorage("terminalOptions") var terminalOptions: CodableWrapper<TerminalOptions> = .init(
+        value: TerminalOptions())
 
     @SceneStorage("sidebar.visible") var isSideBarVisible: Bool = DefaultUIState.SIDEBAR_VISIBLE
     @SceneStorage("panel.height") var panelHeight: Double = DefaultUIState.PANEL_HEIGHT
@@ -232,6 +231,9 @@ private struct MainView: View {
         .onChange(of: runeStoneEditorEnabled) { _ in
             App.setUpEditorInstance()
         }
+        .onChange(of: terminalOptions) { newValue in
+            App.terminalInstance.options = newValue.value
+        }
         .hiddenScrollableContentBackground()
         .onAppear {
             let appVersion =
@@ -243,7 +245,6 @@ private struct MainView: View {
 
             changeLogLastReadVersion = appVersion
         }
-
         .alert(
             alertManager.title, isPresented: $alertManager.isShowingAlert,
             actions: {
@@ -255,6 +256,36 @@ private struct MainView: View {
                 } else {
                     EmptyView()
                 }
+            }
+        )
+        .alert(
+            authenticationRequestManager.title,
+            isPresented: $authenticationRequestManager.isShowingAlert,
+            actions: {
+                if let usernameTitleKey = authenticationRequestManager.usernameTitleKey {
+                    TextField(
+                        usernameTitleKey,
+                        text: $authenticationRequestManager.username
+                    )
+                    .textContentType(.username)
+                    .disableAutocorrection(true)
+                    .autocapitalization(.none)
+                }
+
+                if let passwordTitleKey = authenticationRequestManager.passwordTitleKey {
+                    SecureField(
+                        passwordTitleKey,
+                        text: $authenticationRequestManager.password
+                    )
+                    .textContentType(.password)
+                    .disableAutocorrection(true)
+                    .autocapitalization(.none)
+                }
+
+                Button(
+                    "common.cancel", role: .cancel,
+                    action: authenticationRequestManager.callbackOnCancel)
+                Button("common.continue", action: authenticationRequestManager.callback)
             }
         )
         .sheet(isPresented: $safariManager.showsSafari) {
