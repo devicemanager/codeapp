@@ -8,7 +8,7 @@
 
 "Welcome Message" =
 "# Code App
-##### **v1.9.0 (2024 年 7 月)**
+##### **v1.10.2 (2025 年 3 月)**
 #### 开始
 [新文件](https://thebaselab.com/code/newfile)
 [打开文件](https://thebaselab.com/code/openfile)
@@ -23,6 +23,16 @@
 
 "Changelog.message" =
 "
+### 1.10.2 (2025 年 3 月)
+- 俄语本地化
+
+### 1.10.1 (2024 年 10 月)
+- 错误修复
+
+### 1.10.0 (2024 年 10 月)
+- Python 和 Java 的语言服务器
+- Monaco 编辑器支持更多语言
+
 ### 1.9.0（2024 年 7 月）
 - SSH
   - 代理跳转
@@ -485,6 +495,10 @@
 "settings.runestone.editor" = "Runestone编辑器";
 "settings.runestone.editor.notes" = "Runestone是一款具有本地文本选择支持的编辑器。在此模式下，某些功能无法使用。";
 "settings.terminal.font" = "字体";
+"settings.language_service" = "语言服务";
+"settings.language_service.enable" = "启用语言服务";
+"settings.language_service.notes" = "语言服务提供自动完成、静态代码分析等语言功能。此功能目前适用于 Python 和 Java。";
+"settings.about.change_app_language" = "更改应用程序语言";
 
 "panels.no_panel_selected" = "没有选中的面板";
 "sidebar.no_section_selected" = "没有选中的版面";
@@ -584,11 +598,27 @@
 "source_control.pulling_from_remote" = "拉取中";
 "source_control.pull_succeeded" = "拉取成功";
 "source_control.checkout.select_branch_or_tag" = "选择分支或标签";
+"source_control.public_key" = "公钥";
+"source_control.editing_public_key" = "编辑公钥";
+"source_control.key_content" = "密钥内容";
+"source_control.private_key" = "私钥";
+"source_control.passphrase_optional" = "密码 (可选)";
+"source_control.hostname" = "主机名";
+"source_control.credentials" = "凭据";
+"source_control.new_credentials" = "新凭据";
+"source_control.hostname_based_credentials" = "基于主机名的凭据";
+"source_control.add_key_based_credentials" = "添加基于密钥的凭据";
+"source_control.add_password_based_credentials" = "添加基于密码的凭据";
 "source_control.create_branch" = "创建分支";
 "source_control.branch_name" = "分支名称";
 "source_control.branch" = "分支";
 "source_control.confirm_delete_branch %@" = "您确定要删除分支 %@ 吗？";
 "source_control.branch_deleted" = "分支 %@ 已删除";
+"source_control.tag" = "标签";
+"source_control.create_tag" = "创建标签";
+"source_control.tag_name" = "标签名称";
+"source_control.annotation_optional" = "注释 (可选)";
+"source_control.tag_created" = "Tag %@ erstellt";
 "source_control.confirm_delete_tag" = "您确定要删除标签 %@ 吗？";
 "source_control.tag_deleted" = "标签 %@ 已删除";
 "source_control.pushing_tag_to_remote" = "推送标签到远程";

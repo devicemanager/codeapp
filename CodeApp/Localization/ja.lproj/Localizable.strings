@@ -8,7 +8,7 @@
 
 "Welcome Message" =
 "# Code App
-##### **v1.9.0 (2024年 7月)**
+##### **v1.10.2 (2025年 3月)**
 #### 開始
 [新しいファイル](https://thebaselab.com/code/newfile)
 [ファイルを開く](https://thebaselab.com/code/openfile)
@@ -23,6 +23,16 @@
 
 "Changelog.message" =
 "
+### 1.10.2 (2025 年 3 月)
+- ロシア語のローカライズ
+
+### 1.10.1 (2024 年 10 月)
+- バグ修正
+
+### 1.10.0 (2024 年 10 月)
+- Python および Java の言語サーバー
+- Monaco エディターでのより多くの言語のサポート
+
 ### 1.9.0 (2024 年 7 月)
 - SSH
    - プロキシジャンプ
@@ -495,6 +505,10 @@
 "settings.runestone.editor" = "Runestoneエディタ";
 "settings.runestone.editor.notes" = "Runestone はネイティブのテキスト選択をサポートするエディターです。このモードでは一部の機能は使用できません。";
 "settings.terminal.font" = "フォント";
+"settings.language_service" = "言語サービス";
+"settings.language_service.enable" = "言語サービスを有効にする";
+"settings.language_service.notes" = "言語サービスは、オートコンプリート、静的コード分析、その他の言語機能を提供します。この機能は現在、Python と Java で利用できます。";
+"settings.about.change_app_language" = "アプリの言語を変更";
 
 "panels.no_panel_selected" = "パネルが選択されていません";
 "sidebar.no_section_selected" = "セクションが選択されていません";

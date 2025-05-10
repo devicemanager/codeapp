@@ -213,6 +213,7 @@ class MainApp: ObservableObject {
     @AppStorage("editorDarkTheme") var selectedTheme: String = "Dark+"
     @AppStorage("stateRestorationEnabled") var stateRestorationEnabled = true
     @AppStorage("runeStoneEditorEnabled") var runeStoneEditorEnabled: Bool = false
+    @AppStorage("languageServiceEnabled") var languageServiceEnabled: Bool = true
 
     init() {
 
@@ -318,6 +319,41 @@ class MainApp: ObservableObject {
                 }
                 await monacoInstance.createNewModel(
                     url: activeTextEditor.url.absoluteString, value: activeTextEditor.content)
+            }
+        }
+
+        guard let currentDirectoryURL = workSpaceStorage.currentDirectory._url else {
+            return
+        }
+        guard !runeStoneEditorEnabled && currentDirectoryURL.isFileURL && languageServiceEnabled
+        else {
+            monacoInstance.disconnectLanguageService()
+            return
+        }
+        if let languageServiceConfiguration = LanguageService.configurationFor(
+            url: activeTextEditor.url)
+        {
+            Task {
+                let isLanguageServiceConnected = await monacoInstance.isLanguageServiceConnected
+                if isLanguageServiceConnected
+                    && LanguageService.shared.candidateLanguageIdentifier
+                        == languageServiceConfiguration.languageIdentifier
+                {
+                    return
+                }
+                if isLanguageServiceConnected {
+                    monacoInstance.disconnectLanguageService()
+                    try? await Task.sleep(for: .seconds(5))
+                }
+                LanguageService.shared.candidateLanguageIdentifier =
+                    languageServiceConfiguration.languageIdentifier
+                monacoInstance.connectLanguageService(
+                    serverURL: URL(
+                        string: "ws://127.0.0.1:\(String(AppExtensionService.PORT))/websocket")!,
+                    serverArgs: languageServiceConfiguration.args,
+                    pwd: currentDirectoryURL,
+                    languageIdentifier: languageServiceConfiguration.languageIdentifier
+                )
             }
         }
     }
@@ -1204,6 +1240,19 @@ extension MainApp: EditorImplementationDelegate {
         if let url = URL(string: url) {
             if url.scheme == "http" || url.scheme == "https" {
                 safariManager.showSafari(url: url)
+            }
+        }
+    }
+
+    func editorImplementation(languageServerDidDisconnect languageIdentifier: String) {
+        // Recovery strategy
+        DispatchQueue.main.asyncAfter(deadline: .now() + 10.0) {
+            Task {
+                if !(await self.monacoInstance.isLanguageServiceConnected)
+                    && languageIdentifier == LanguageService.shared.candidateLanguageIdentifier
+                {
+                    await self.updateActiveEditor()
+                }
             }
         }
     }

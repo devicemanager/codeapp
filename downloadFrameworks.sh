@@ -74,9 +74,24 @@ rm -f NMSSH.xcframework.zip
 # Java
 mkdir -p Java
 cd Java
-curl -OL https://github.com/thebaselab/android-openjdk-build-multiarch/releases/download/v0.2/java-8-zero-frameworks-tools.zip
-unzip -q java-8-zero-frameworks-tools.zip
-rm -f java-8-zero-frameworks-tools.zip
+curl -OL https://github.com/thebaselab/android-openjdk-build-multiarch/releases/download/v0.2/java-8-zero-frameworks-tools-with-src.zip
+unzip -q java-8-zero-frameworks-tools-with-src.zip
+rm -f java-8-zero-frameworks-tools-with-src.zip
 cd ..
+
+# Python LSP
+curl -OL https://github.com/thebaselab/codeapp-python/releases/download/2024.8.15/python-lsp.zip
+unzip -q python-lsp.zip
+rm -f python-lsp.zip
+
+# monaco editor
+curl -OL https://github.com/thebaselab/codeapp-monaco/releases/download/2024.8.16/monaco-textmate.bundle.zip
+unzip -q monaco-textmate.bundle.zip
+rm -f monaco-textmate.bundle.zip
+
+# Java LSP
+curl -OL https://github.com/thebaselab/codeapp-java/releases/download/2024.8.16/java-lsp.zip
+unzip -q java-lsp.zip
+rm -f java-lsp.zip
 
 echo "Done!"
